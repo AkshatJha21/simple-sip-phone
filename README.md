@@ -1,73 +1,164 @@
-# Welcome to your Lovable project
+# SIP Softphone
 
-## Project info
+A simple, browser-based SIP softphone built with React and SIP.js. Make and receive VoIP calls directly from your browser.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- ✅ SIP registration with any WebRTC-enabled SIP server
+- ✅ Make outbound calls
+- ✅ Receive incoming calls
+- ✅ Hang up calls
+- ✅ Mute/unmute microphone
+- ✅ DTMF tone sending (for IVR menus)
+- ✅ Call timer
+- ✅ Caller ID display
+- ✅ Clean, responsive UI
 
-There are several ways of editing your application.
+## Project Structure
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/
+│   ├── Softphone.tsx      # Main phone component (orchestrates everything)
+│   ├── Dialpad.tsx        # Phone dialpad (0-9, *, #)
+│   ├── CallControls.tsx   # Call/Answer/Hangup/Mute buttons
+│   ├── CallStatus.tsx     # Status indicator, caller ID, call timer
+│   ├── PhoneDisplay.tsx   # Shows the number being dialed
+│   └── SettingsPanel.tsx  # SIP credentials configuration
+├── services/
+│   └── sipService.ts      # SIP.js wrapper - handles all SIP communication
+├── pages/
+│   └── Index.tsx          # Main page
+└── index.css              # Design system and styles
 ```
 
-**Edit a file directly in GitHub**
+## How It Works
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### The Flow
 
-**Use GitHub Codespaces**
+1. **User enters SIP credentials** in the Settings Panel
+2. **Click "Connect"** → sipService creates a SIP.js UserAgent and registers with the server
+3. **Enter a number** → digits appear in the Phone Display
+4. **Click the call button** → sipService creates an Inviter and sends INVITE
+5. **Other party answers** → audio streams connect, call timer starts
+6. **Click hangup** → sipService sends BYE, call ends
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Key Components
 
-## What technologies are used for this project?
+#### `sipService.ts`
+The heart of the application. This service:
+- Wraps SIP.js to provide a simple API
+- Manages the UserAgent (your "phone")
+- Handles registration with the SIP server
+- Creates and manages call sessions
+- Sends DTMF tones
+- Controls audio muting
 
-This project is built with:
+#### `Softphone.tsx`
+The main UI component that:
+- Initializes the SIP service on mount
+- Manages all phone state (connected, in-call, etc.)
+- Coordinates between user actions and SIP service
+- Displays appropriate UI based on current state
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Running Locally
 
-## How can I deploy this project?
+```bash
+# Install dependencies
+npm install
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+# Start development server
+npm run dev
 
-## Can I connect a custom domain to my Lovable project?
+# Open http://localhost:8080 in your browser
+```
 
-Yes, you can!
+## SIP Server Requirements
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+This softphone works with any SIP server that supports:
+- **WebSocket transport** (required for browser-based SIP)
+- **WebRTC** for audio/video
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Popular Compatible Servers
+
+1. **Asterisk** (with WebRTC enabled)
+   - Enable `http_websocket` module
+   - Configure WSS endpoint
+   - Example WebSocket URL: `wss://your-asterisk.com:8089/ws`
+
+2. **FreeSWITCH**
+   - Enable `mod_verto` or `mod_sofia` with WebSocket
+   - Example WebSocket URL: `wss://your-freeswitch.com:7443`
+
+3. **Public SIP Providers** (for testing)
+   - Many VoIP providers now offer WebRTC support
+   - Check if your provider supports SIP over WebSocket
+
+### Example Asterisk Configuration
+
+In `http.conf`:
+```ini
+[general]
+enabled=yes
+bindaddr=0.0.0.0
+bindport=8088
+tlsenable=yes
+tlsbindaddr=0.0.0.0:8089
+tlscertfile=/path/to/cert.pem
+tlsprivatekey=/path/to/key.pem
+```
+
+In `pjsip.conf`:
+```ini
+[transport-wss]
+type=transport
+protocol=wss
+bind=0.0.0.0
+
+[your-extension]
+type=endpoint
+context=default
+disallow=all
+allow=opus
+allow=ulaw
+webrtc=yes
+```
+
+## Browser Permissions
+
+The softphone requires microphone access. When you make your first call, the browser will ask for permission. You must allow it for audio to work.
+
+## Limitations
+
+- **No video support** (audio only for simplicity)
+- **Basic NAT traversal** (uses SIP.js defaults; may need STUN/TURN for complex networks)
+- **No encryption setup** beyond what SIP.js provides by default
+- **Single call only** (no call waiting or multiple lines)
+
+## Troubleshooting
+
+### "Failed to register"
+- Check your SIP credentials
+- Verify the WebSocket URL is correct and accessible
+- Ensure your SIP server has WebSocket/WebRTC enabled
+
+### No audio
+- Check browser microphone permissions
+- Verify STUN/TURN servers if behind strict NAT
+- Check browser console for WebRTC errors
+
+### Call connects but no sound
+- Audio may be blocked by browser autoplay policies
+- Try clicking somewhere on the page before answering
+
+## Technologies Used
+
+- **React** - UI framework
+- **SIP.js** - SIP/WebRTC library
+- **Tailwind CSS** - Styling
+- **Vite** - Build tool
+- **TypeScript** - Type safety (used throughout despite being "simple")
+
+## License
+
+MIT
