@@ -110,6 +110,9 @@ class SipService {
         transportOptions: {
           server: credentials.wsServer,
         },
+        // IMPORTANT: Use a stable contact user so inbound INVITEs reliably match this UA
+        // (SIP.js matches incoming Request-URI by user-part)
+        contactName: credentials.username,
         // Authentication credentials
         authorizationUsername: credentials.username,
         authorizationPassword: credentials.password,
@@ -126,6 +129,7 @@ class SipService {
 
       // Create the UserAgent
       this.userAgent = new UserAgent(userAgentOptions);
+      console.log("[SIP] UA contact:", this.userAgent.contact.uri.toString());
 
       // Start the UserAgent (connects the WebSocket)
       await this.userAgent.start();
