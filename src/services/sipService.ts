@@ -25,6 +25,28 @@ import {
   Invitation,
 } from "sip.js";
 
+const CONTACT_NAME_STORAGE_KEY = "lov_sip_contact_name_v1";
+
+function getOrCreateStableContactName(): string {
+  try {
+    const existing = sessionStorage.getItem(CONTACT_NAME_STORAGE_KEY);
+    if (existing) return existing;
+
+    // 8-char token similar to SIP.js default, but stable per-tab.
+    const bytes = crypto.getRandomValues(new Uint8Array(8));
+    const token = Array.from(bytes)
+      .map((b) => (b % 36).toString(36))
+      .join("")
+      .slice(0, 8);
+
+    sessionStorage.setItem(CONTACT_NAME_STORAGE_KEY, token);
+    return token;
+  } catch {
+    // Fallback if sessionStorage/crypto unavailable
+    return Math.random().toString(36).slice(2, 10);
+  }
+}
+
 // SIP credentials needed to connect to a SIP server
 export interface SipCredentials {
   // Your SIP username (e.g., "1001" or "user@domain.com")
