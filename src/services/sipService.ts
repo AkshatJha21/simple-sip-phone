@@ -115,10 +115,13 @@ class SipService {
         authorizationPassword: credentials.password,
         // Handle incoming calls
         delegate: {
-          onInvite: (invitation: Invitation) => this.handleIncomingCall(invitation),
+          onInvite: (invitation: Invitation) => {
+            console.log("[SIP] Incoming call received!", invitation);
+            this.handleIncomingCall(invitation);
+          },
         },
         // Log level (set to "debug" for troubleshooting)
-        logLevel: "warn",
+        logLevel: "debug",
       };
 
       // Create the UserAgent
