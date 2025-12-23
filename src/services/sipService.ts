@@ -110,9 +110,6 @@ class SipService {
         transportOptions: {
           server: credentials.wsServer,
         },
-        // IMPORTANT: Use a stable contact user so inbound INVITEs reliably match this UA
-        // (SIP.js matches incoming Request-URI by user-part)
-        contactName: credentials.username,
         // Authentication credentials
         authorizationUsername: credentials.username,
         authorizationPassword: credentials.password,
