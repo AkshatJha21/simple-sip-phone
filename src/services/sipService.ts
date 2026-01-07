@@ -28,22 +28,27 @@ import {
 const CONTACT_NAME_STORAGE_KEY = "lov_sip_contact_name_v1";
 
 function getOrCreateStableContactName(): string {
+  // Use only lowercase letters (a-z) to avoid any SIP header parsing issues
+  const CHARS = "abcdefghijklmnopqrstuvwxyz";
   try {
     const existing = sessionStorage.getItem(CONTACT_NAME_STORAGE_KEY);
-    if (existing) return existing;
+    if (existing && /^[a-z]{8}$/.test(existing)) return existing;
 
-    // 8-char token similar to SIP.js default, but stable per-tab.
+    // 8-char token using only letters for maximum SIP compatibility
     const bytes = crypto.getRandomValues(new Uint8Array(8));
     const token = Array.from(bytes)
-      .map((b) => (b % 36).toString(36))
-      .join("")
-      .slice(0, 8);
+      .map((b) => CHARS[b % 26])
+      .join("");
 
     sessionStorage.setItem(CONTACT_NAME_STORAGE_KEY, token);
     return token;
   } catch {
     // Fallback if sessionStorage/crypto unavailable
-    return Math.random().toString(36).slice(2, 10);
+    let result = "";
+    for (let i = 0; i < 8; i++) {
+      result += CHARS[Math.floor(Math.random() * 26)];
+    }
+    return result;
   }
 }
 
