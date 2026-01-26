@@ -1,0 +1,104 @@
+# SIP Proxy Stack - Kamailio + Node.js Router + Multiple Asterisk Servers
+#
+# This docker-compose file sets up:
+# 1. Kamailio (SIP Proxy) - Routes SIP messages between endpoints and Asterisk servers
+# 2. Node.js Router API - Provides routing decisions to Kamailio via HTTP
+# 3. Two Asterisk servers - Handle media and call features for different user ranges
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop all services
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # KAMAILIO - SIP Proxy Server
+  # =============================================================================
+  # Kamailio receives all SIP traffic and routes it to the appropriate Asterisk
+  # server based on routing rules from the Node.js API.
+  kamailio:
+    build:
+      context: ./kamailio
+      dockerfile: Dockerfile
+    container_name: sip-proxy-kamailio
+    ports:
+      # SIP over UDP (standard)
+      - "5060:5060/udp"
+      # SIP over TCP
+      - "5060:5060/tcp"
+      # SIP over WebSocket (for browser softphones)
+      - "8080:8080/tcp"
+    environment:
+      # Node.js router API URL (internal Docker network)
+      - ROUTER_API_URL=http://node-router:3000
+    depends_on:
+      - node-router
+    networks:
+      - sip-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # NODE.JS ROUTER API
+  # =============================================================================
+  # This service handles routing logic. Kamailio queries this API to determine
+  # where to send each call. You can implement complex routing rules here.
+  node-router:
+    build:
+      context: ./node-router
+      dockerfile: Dockerfile
+    container_name: sip-proxy-router
+    ports:
+      # Expose for debugging/admin (optional in production)
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # Asterisk server addresses (internal Docker network)
+      - ASTERISK_1_HOST=asterisk-1
+      - ASTERISK_1_PORT=5060
+      - ASTERISK_2_HOST=asterisk-2
+      - ASTERISK_2_PORT=5060
+    networks:
+      - sip-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # ASTERISK SERVER 1 - Handles extensions 1000-1999
+  # =============================================================================
+  asterisk-1:
+    image: andrius/asterisk:alpine-18
+    container_name: sip-proxy-asterisk-1
+    volumes:
+      - ./asterisk-1/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./asterisk-1/extensions.conf:/etc/asterisk/extensions.conf:ro
+    environment:
+      - ASTERISK_UID=1000
+      - ASTERISK_GID=1000
+    networks:
+      - sip-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # ASTERISK SERVER 2 - Handles extensions 2000-2999
+  # =============================================================================
+  asterisk-2:
+    image: andrius/asterisk:alpine-18
+    container_name: sip-proxy-asterisk-2
+    volumes:
+      - ./asterisk-2/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./asterisk-2/extensions.conf:/etc/asterisk/extensions.conf:ro
+    environment:
+      - ASTERISK_UID=1000
+      - ASTERISK_GID=1000
+    networks:
+      - sip-network
+    restart: unless-stopped
+
+networks:
+  sip-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
